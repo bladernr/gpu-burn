@@ -535,12 +535,14 @@ bool listenClients(std::vector<int> clientFd, std::vector<pid_t> clientPid, int 
 	while (wait(NULL) != -1);
 	printf("done\n");
 
-    bool testFailed = false;
+        bool testFailed = false;
 	printf("\nTested %d GPUs:\n", (int)clientPid.size());
-	for (size_t i = 0; i < clientPid.size();
-        if (clientFaulty.at(i))
-            testFailed = true;
-		printf("\tGPU %d: %s\n", (int)i, clientFaulty.at(i) ? "FAULTY" : "OK");
+	for (size_t i = 0; i < clientPid.size(); i++) {
+            if (clientFaulty.at(i)) {
+                testFailed = true;
+	    }
+            printf("\tGPU %d: %s\n", (int)i, clientFaulty.at(i) ? "FAULTY" : "OK");
+	}
     return testFailed;
 }
 
@@ -555,6 +557,8 @@ template<class T> bool launch(int runLength, bool useDoubles) {
 		A[i] = (T)((double)(rand()%1000000)/100000.0);
 		B[i] = (T)((double)(rand()%1000000)/100000.0);
 	}
+		
+	bool testFailures = false;
 
 	// Forking a process..  This one checks the number of devices to use,
 	// returns the value, and continues to use the first one.
@@ -576,7 +580,7 @@ template<class T> bool launch(int runLength, bool useDoubles) {
 		startBurn<T>(0, writeFd, A, B, useDoubles);
 
 		close(writeFd);
-		return;
+		return true;
 	} else {
 		clientPids.push_back(myPid);
 
@@ -602,14 +606,13 @@ template<class T> bool launch(int runLength, bool useDoubles) {
 					startBurn<T>(i, slavePipe[1], A, B, useDoubles);
 
 					close(slavePipe[1]);
-					return;
+					return true;
 				} else {
 					clientPids.push_back(slavePid);
 					close(slavePipe[1]);
 				}
 			}
 			
-            bool testFailures = false;
 			testFailures = listenClients(clientPipes, clientPids, runLength);
 		}
 	}
@@ -642,5 +645,8 @@ int main(int argc, char **argv) {
 	else
 		testResult = launch<float>(runLength, useDoubles);
 
-	return testResult;
+	if (!testResult)
+	    return 1;
+	else
+            return 0;
 }
