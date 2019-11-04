@@ -535,9 +535,13 @@ void listenClients(std::vector<int> clientFd, std::vector<pid_t> clientPid, int 
 	while (wait(NULL) != -1);
 	printf("done\n");
 
+    bool testFailed = false;
 	printf("\nTested %d GPUs:\n", (int)clientPid.size());
-	for (size_t i = 0; i < clientPid.size(); ++i)
+	for (size_t i = 0; i < clientPid.size();
+        if (clientFaulty.at(i))
+            testFailed = true;
 		printf("\tGPU %d: %s\n", (int)i, clientFaulty.at(i) ? "FAULTY" : "OK");
+    return testFailed;
 }
 
 template<class T> void launch(int runLength, bool useDoubles) {
@@ -605,7 +609,7 @@ template<class T> void launch(int runLength, bool useDoubles) {
 				}
 			}
 			
-			listenClients(clientPipes, clientPids, runLength);
+			return listenClients(clientPipes, clientPids, runLength);
 		}
 	}
 
@@ -620,6 +624,7 @@ int main(int argc, char **argv) {
 	int runLength = 10;
 	bool useDoubles = false;
 	int thisParam = 0;
+    bool testResult = false;
 	if (argc >= 2 && std::string(argv[1]) == "-d") {
 			useDoubles = true;
 			thisParam++;
@@ -632,7 +637,7 @@ int main(int argc, char **argv) {
 	if (useDoubles)
 		launch<double>(runLength, useDoubles);
 	else
-		launch<float>(runLength, useDoubles);
+		testResult = launch<float>(runLength, useDoubles);
 
-	return 0;
+	return testResult;
 }
